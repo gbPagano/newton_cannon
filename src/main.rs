@@ -1,7 +1,7 @@
+use ::bounded_vec_deque::BoundedVecDeque;
 use bevy::{prelude::*, render::camera::ScalingMode, sprite::MaterialMesh2dBundle};
 use bevy_editor_pls::prelude::*;
 use bevy_pancam::{PanCam, PanCamPlugin};
-use ::bounded_vec_deque::BoundedVecDeque;
 
 const BACKGROUND_COLOR: Color = Color::BLACK;
 const TIME_STEP: f32 = 1. / 60.;
@@ -20,8 +20,8 @@ fn main() {
             (
                 apply_acceleration,
                 apply_velocity.after(apply_acceleration),
-                clean_trace.after(apply_velocity),
-                spawn_trace.after(clean_trace),
+                // clean_trace.after(apply_velocity),
+                // spawn_trace.after(clean_trace),
             )
                 .in_schedule(CoreSchedule::FixedUpdate),
         )
@@ -55,13 +55,10 @@ struct Trace(BoundedVecDeque<Vec2>);
 #[derive(Component)]
 struct BallTrace;
 
-
 #[derive(Component)]
 struct CoolDown {
-    cd: Timer,
+    timer: Timer,
 }
-
-
 
 fn setup(
     mut commands: Commands,
@@ -73,11 +70,14 @@ fn setup(
     let background_image = asset_server.load("background.jpg");
     let planet_image = asset_server.load("planet_earth.png");
 
+    // timer
+    commands.spawn(CoolDown {
+        timer: Timer::from_seconds(1.5, TimerMode::Once),
+    });
+
     // camera
     let mut cam = Camera2dBundle::default();
     cam.projection.scaling_mode = ScalingMode::FixedVertical(2500.0);
-    
-    commands.spawn(CoolDown{ cd: Timer::from_seconds(1.5, TimerMode::Once)} );
 
     commands.spawn((
         cam,
@@ -91,10 +91,6 @@ fn setup(
             ..default()
         },
     ));
-    
-
-
-
     // background
     commands.spawn(SpriteBundle {
         texture: background_image,
@@ -135,7 +131,6 @@ fn setup(
     ));
 }
 
-
 fn apply_acceleration(mut query: Query<(&mut Velocity, &Acceleration)>) {
     for (mut velocity, acceleration) in &mut query {
         velocity.x += acceleration.x * TIME_STEP;
@@ -143,49 +138,33 @@ fn apply_acceleration(mut query: Query<(&mut Velocity, &Acceleration)>) {
     }
 }
 
-
-fn apply_velocity(mut commands: Commands, 
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
+fn apply_velocity(
     mut query: Query<(&mut Transform, &Velocity, &mut Trace)>,
     mut timer: Query<&mut CoolDown>,
     time: Res<Time>,
 ) {
     for (mut transform, velocity, mut trace_elements) in &mut query {
-
-        // commands.spawn((
-        //     MaterialMesh2dBundle {
-        //         mesh: meshes.add(shape::Circle::new(15.).into()).into(),
-        //         material: materials.add(ColorMaterial::from(Color::GREEN)),
-        //         transform: Transform::from_xyz(transform.translation.x, transform.translation.y, 1.),
-        //         ..default()
-        //     },
-        //     BallTrace,
-        // ));
-
         for mut clock in &mut timer {
-            if clock.cd.tick(time.delta()).finished() {
-                trace_elements.push_back(Vec2::new(transform.translation.x, transform.translation.y));
-                clock.cd = Timer::from_seconds(0.2, TimerMode::Once);
-
+            if clock.timer.tick(time.delta()).finished() {
+                trace_elements
+                    .push_back(Vec2::new(transform.translation.x, transform.translation.y));
+                clock.timer = Timer::from_seconds(0.2, TimerMode::Once);
             }
         }
-        // trace_elements.push_back(Vec2::new(transform.translation.x, transform.translation.y));
-        
+
         transform.translation.x += velocity.x * TIME_STEP;
         transform.translation.y += velocity.y * TIME_STEP;
     }
 }
 
-fn clean_trace(
-    mut commands: Commands,
-    query: Query<Entity,  With<BallTrace>>
-) {
+#[allow(dead_code)]
+fn clean_trace(mut commands: Commands, query: Query<Entity, With<BallTrace>>) {
     for trace_entity in &query {
         commands.entity(trace_entity).despawn();
     }
 }
 
+#[allow(dead_code)]
 fn spawn_trace(
     mut commands: Commands,
     query: Query<&Trace>,
