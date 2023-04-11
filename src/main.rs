@@ -5,7 +5,13 @@ use bevy_pancam::{PanCam, PanCamPlugin};
 
 const BACKGROUND_COLOR: Color = Color::BLACK;
 const TIME_STEP: f32 = 1. / 60.;
-const GRAVITATIONAL_CONSTANT: f32 = 0.667; 
+const GRAVITATIONAL_CONSTANT: f32 = 0.35; 
+const PLANET_RADIUS: f32 = 756.8 / 2.;
+const PLANET_MASS: u64 = 1_000_000;
+const BALL_RADIUS: f32 = 7.5;
+const BALL_MASS: u64 = 1;
+
+
 
 fn main() {
     App::new()
@@ -19,13 +25,14 @@ fn main() {
         .add_startup_system(setup)
         .add_systems(
             (
+                next_ball_events.before(apply_gravity),
                 apply_gravity,
                 apply_acceleration.after(apply_gravity),
                 apply_velocity.after(apply_acceleration),
                 clean_trace.after(apply_velocity),
                 spawn_trace.after(clean_trace),
             )
-                .in_schedule(CoreSchedule::FixedUpdate),
+                // .in_schedule(CoreSchedule::FixedUpdate),
         )
         .run();
 }
@@ -55,31 +62,34 @@ struct Radius {
     value: f32,
 }
 
-#[derive(Component, Deref, DerefMut)]
-struct Trace(BoundedVecDeque<Vec2>);
+#[derive(Component)]
+struct Trace {
+    balls: BoundedVecDeque<Vec2>,
+    counter: i32,
+    last: bool,
+}
 
 #[derive(Component)]
 struct BallTrace;
 
+
+
 #[derive(Component)]
-struct CoolDown {
-    timer: Timer,
+struct NextBall {
+    speed: f32,
 }
 
 fn setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
     // assets
     let background_image = asset_server.load("background.jpg");
     let planet_image = asset_server.load("planet_earth.png");
+    let cannon_image = asset_server.load("cannon.png");
 
-    // timer
-    commands.spawn(CoolDown {
-        timer: Timer::from_seconds(1.5, TimerMode::Once),
-    });
+
+
 
     // camera
     let mut cam = Camera2dBundle::default();
@@ -102,9 +112,8 @@ fn setup(
         texture: background_image,
         ..default()
     });
-
+    
     // planet
-    let planet_radius = 756.8 / 2.;
     commands.spawn((
         SpriteBundle {
             texture: planet_image,
@@ -117,27 +126,78 @@ fn setup(
             ..default()
         },
         Planet,
-        Mass { value: 1000000 },
-        Radius { value: planet_radius },
+        Mass { value: PLANET_MASS },
+        Radius { value: PLANET_RADIUS },
         Position(Vec2::new(0., 0.)),
     ));
-
-    // circle
-    commands.spawn((
-        MaterialMesh2dBundle {
-            mesh: meshes.add(shape::Circle::new(15.).into()).into(),
-            material: materials.add(ColorMaterial::from(Color::GREEN)),
-            transform: Transform::from_xyz(0., planet_radius + 200., 1.),
+    
+    // cannon 
+    commands.spawn(SpriteBundle {
+            texture: cannon_image,
+            // transform: Transform::from_scale(Vec3::splat(0.1)),
+            transform: Transform {
+                translation: Vec3::new(0., 0., 1.),
+                scale: Vec3::splat(0.1),
+                ..default()
+            },
             ..default()
         },
-        Ball,
-        Mass { value: 1},
-        Radius { value: 15.},
-        Velocity(Vec2::new(250., 0.)),
-        Acceleration(Vec2::new(0., 0.)),
-        Trace(BoundedVecDeque::new(100)),
-    ));
+    );
+
+
+    // next ball
+    commands.spawn(NextBall {
+        speed: 0., 
+    });
+
 }
+
+
+fn next_ball_events(
+    keyboard_input: Res<Input<KeyCode>>,
+    mut query: Query<&mut NextBall>,
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+    mut old_balls: Query<&mut Trace>,
+) {
+    let mut next_ball = query.single_mut();
+    if keyboard_input.any_pressed([KeyCode::Left, KeyCode::Down]) {
+        next_ball.speed -= 1.0;
+    }
+    if keyboard_input.any_pressed([KeyCode::Right, KeyCode::Up]) {
+        next_ball.speed += 1.0;
+    }
+    if keyboard_input.any_just_pressed([KeyCode::Space, KeyCode::Return]) {
+        
+        for mut trace in &mut old_balls {
+            trace.balls = BoundedVecDeque::new(1);
+            trace.last = false;
+        }
+
+        commands.spawn((
+            MaterialMesh2dBundle {
+                mesh: meshes.add(shape::Circle::new(BALL_RADIUS).into()).into(),
+                material: materials.add(ColorMaterial::from(Color::RED)),
+                transform: Transform::from_xyz(0., PLANET_RADIUS + 200., 2.),
+                ..default()
+            },
+            Ball,
+            Mass { value: BALL_MASS },
+            Radius { value: BALL_RADIUS },
+            Velocity(Vec2::new(next_ball.speed, 0.)),
+            Acceleration(Vec2::new(0., 0.)),
+            Trace {
+                balls: BoundedVecDeque::new(100),
+                counter: 0,
+                last: true,
+            },
+        ));
+        next_ball.speed += 30.;
+    }
+    println!("{}", next_ball.speed);
+}
+
 
 fn get_distance(point_a: &Vec3, point_b: Vec3) -> f32 {
     let square_distance: f32 = (point_b.x - point_a.x).powf(2.) + (point_b.y - point_a.y).powf(2.);
@@ -151,7 +211,7 @@ fn apply_gravity(
 ) {
     let planet_mass = query_planet.single();
     for (transform, mut acceleration, mass) in &mut query_ball {
-        println!("{:?}, {:?}", transform.translation, mass);
+        // println!("{:?}, {:?}", transform.translation, mass);
         let mass_product = planet_mass.value * mass.value;
         let mut distance = get_distance(&transform.translation, Vec3::new(0.,0., 1.));
         if distance < 1. {
@@ -185,21 +245,34 @@ fn apply_acceleration(mut query: Query<(&mut Velocity, &Acceleration)>) {
 }
 
 fn apply_velocity(
-    mut query: Query<(&mut Transform, &Velocity, &mut Trace)>,
-    mut timer: Query<&mut CoolDown>,
-    time: Res<Time>,
+    mut query: Query<(&mut Transform, &Velocity, &Radius, &mut Trace)>,
+
+
 ) {
-    for (mut transform, velocity, mut trace_elements) in &mut query {
-        for mut clock in &mut timer {
-            if clock.timer.tick(time.delta()).finished() {
-                trace_elements
-                    .push_back(Vec2::new(transform.translation.x, transform.translation.y));
-                clock.timer = Timer::from_seconds(0.2, TimerMode::Once);
-            }
+    for (mut transform, velocity, radius, mut trace) in &mut query {
+        
+        
+        if trace.last {
+            trace.counter += 1;
+            if trace.counter % 10 == 0 {
+                trace.balls.push_back(Vec2::new(transform.translation.x, transform.translation.y));
+            } 
         }
+       
 
         transform.translation.x += velocity.x * TIME_STEP;
         transform.translation.y += velocity.y * TIME_STEP;
+
+        // verificar colisao
+        
+        let distance = get_distance(&transform.translation, Vec3::new(0.,0., 1.));
+        if distance < PLANET_RADIUS + radius.value {
+            transform.translation.x -= velocity.x * TIME_STEP;
+            transform.translation.y -= velocity.y * TIME_STEP;
+        }
+
+        // colisao inelastica
+
     }
 }
 
@@ -217,16 +290,20 @@ fn spawn_trace(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
-    let elements = query.single();
-    for trace_element in elements.iter() {
-        commands.spawn((
-            MaterialMesh2dBundle {
-                mesh: meshes.add(shape::Circle::new(5.).into()).into(),
-                material: materials.add(ColorMaterial::from(Color::GREEN)),
-                transform: Transform::from_xyz(trace_element.x, trace_element.y, 1.),
-                ..default()
-            },
-            BallTrace,
-        ));
+    for trace in query.iter() {
+        if trace.last {
+            for trace_element in trace.balls.iter() {
+                commands.spawn((
+                    MaterialMesh2dBundle {
+                        mesh: meshes.add(shape::Circle::new(5.).into()).into(),
+                        material: materials.add(ColorMaterial::from(Color::GREEN)),
+                        transform: Transform::from_xyz(trace_element.x, trace_element.y, 1.),
+                        ..default()
+                    },
+                    BallTrace,
+                ));
+            }
+        }
+
     }
 }
