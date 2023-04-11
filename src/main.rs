@@ -29,6 +29,7 @@ fn main() {
                 apply_gravity,
                 apply_acceleration.after(apply_gravity),
                 apply_velocity.after(apply_acceleration),
+                update_texts.after(apply_velocity),
                 clean_trace.after(apply_velocity),
                 spawn_trace.after(clean_trace),
             )
@@ -46,7 +47,7 @@ struct Planet;
 #[derive(Component)]
 struct Position(Vec2);
 
-#[derive(Component, Deref, DerefMut)]
+#[derive(Component, Deref, DerefMut, Debug)]
 struct Velocity(Vec2);
 
 #[derive(Component, Deref, DerefMut, Debug)]
@@ -79,6 +80,18 @@ struct NextBall {
     speed: f32,
 }
 
+
+#[derive(Component)]
+struct NextSpeedText;
+
+#[derive(Component)]
+struct LastBallSpeedText;
+
+#[derive(Component)]
+struct LastBallAccelerationText;
+
+
+
 fn setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -87,6 +100,8 @@ fn setup(
     let background_image = asset_server.load("background.jpg");
     let planet_image = asset_server.load("planet_earth.png");
     let cannon_image = asset_server.load("cannon.png");
+    let tower_image = asset_server.load("tower.png");
+
 
 
 
@@ -130,13 +145,15 @@ fn setup(
         Radius { value: PLANET_RADIUS },
         Position(Vec2::new(0., 0.)),
     ));
-    
+   
+
+
     // cannon 
     commands.spawn(SpriteBundle {
             texture: cannon_image,
             // transform: Transform::from_scale(Vec3::splat(0.1)),
             transform: Transform {
-                translation: Vec3::new(0., 0., 1.),
+                translation: Vec3::new(12., 510., 4.),
                 scale: Vec3::splat(0.1),
                 ..default()
             },
@@ -144,14 +161,145 @@ fn setup(
         },
     );
 
+     // cannon 
+    commands.spawn(SpriteBundle {
+            texture: tower_image,
+            // transform: Transform::from_scale(Vec3::splat(0.1)),
+            transform: Transform {
+                translation: Vec3::new(45., 425., 5.),
+                scale: Vec3::splat(0.8),
+                ..default()
+            },
+            ..default()
+        },
+    );
+
+
 
     // next ball
     commands.spawn(NextBall {
-        speed: 0., 
+        speed: 30., 
     });
+    
+
+    // Text with multiple sections
+    commands.spawn((
+        // Create a TextBundle that has a Text with a list of sections.
+        TextBundle::from_sections([
+            TextSection::new(
+                "INITIAL SPEED OF NEXT BALL: ",
+                TextStyle {
+                    font: asset_server.load("fonts/BebasNeue-Regular.ttf"),
+                    font_size: 30.0,
+                    color: Color::WHITE,
+                },
+            ),
+            TextSection::from_style(TextStyle {
+                font: asset_server.load("fonts/BebasNeue-Regular.ttf"),
+                font_size: 30.0,
+                color: Color::GOLD,
+            }),
+        ])
+        .with_style(Style {
+            position_type: PositionType::Absolute,
+            position: UiRect {
+                top: Val::Px(5.0),
+                left: Val::Px(5.0),
+                ..default()
+            },
+            ..default()
+        }),
+        NextSpeedText,
+    ));
+
+        // Text with multiple sections
+    commands.spawn((
+        // Create a TextBundle that has a Text with a list of sections.
+        TextBundle::from_sections([
+            TextSection::new(
+                "SPEED OF LAST BALL: ",
+                TextStyle {
+                    font: asset_server.load("fonts/BebasNeue-Regular.ttf"),
+                    font_size: 25.0,
+                    color: Color::WHITE,
+                },
+            ),
+            TextSection::new(
+                "(X, X)",
+                TextStyle {
+                font: asset_server.load("fonts/BebasNeue-Regular.ttf"),
+                font_size: 25.0,
+                color: Color::GOLD,
+            }),
+        ])
+        .with_style(Style {
+            position_type: PositionType::Absolute,
+            position: UiRect {
+                bottom: Val::Px(30.0),
+                left: Val::Px(5.0),
+                ..default()
+            },
+            ..default()
+        }),
+        LastBallSpeedText,
+    ));
+
+    commands.spawn((
+        // Create a TextBundle that has a Text with a list of sections.
+        TextBundle::from_sections([
+            TextSection::new(
+                "ACCELERATION OF LAST BALL: ",
+                TextStyle {
+                    font: asset_server.load("fonts/BebasNeue-Regular.ttf"),
+                    font_size: 25.0,
+                    color: Color::WHITE,
+                },
+            ),
+            TextSection::new(
+                "(X, X)",
+                TextStyle {
+                font: asset_server.load("fonts/BebasNeue-Regular.ttf"),
+                font_size: 25.0,
+                color: Color::GOLD,
+            }),
+        ])
+        .with_style(Style {
+            position_type: PositionType::Absolute,
+            position: UiRect {
+                bottom: Val::Px(5.0),
+                left: Val::Px(5.0),
+                ..default()
+            },
+            ..default()
+        }),
+        LastBallAccelerationText,
+    ));
+
 
 }
 
+fn update_texts(
+    mut next_ball_text_query: Query<&mut Text, With<NextSpeedText>>,
+    mut speed_ball_text_query: Query<&mut Text, (With<LastBallSpeedText>, Without<NextSpeedText>)>,
+    mut acc_ball_text_query: Query<&mut Text, (With<LastBallAccelerationText>, Without<LastBallSpeedText>, Without<NextSpeedText>)>,
+    next_ball_query: Query<&mut NextBall>,
+    query_actual_ball: Query<(&Acceleration, &Velocity, &Trace)>,
+) {
+    let next_ball = next_ball_query.single();
+    let mut next_ball_text = next_ball_text_query.single_mut();
+    let mut speed_ball_text = speed_ball_text_query.single_mut();
+    let mut acceleration_ball_text = acc_ball_text_query.single_mut();
+
+    next_ball_text.sections[1].value = format!("{}", next_ball.speed);
+
+    for (acceleration, velocity, trace) in &query_actual_ball {
+        if trace.last {
+            speed_ball_text.sections[1].value = format!("({:.2}, {:.2})", velocity.x, velocity.y);
+            acceleration_ball_text.sections[1].value = format!("({:.2}, {:.2})", acceleration.x, acceleration.y);
+        }
+    }
+
+}
 
 fn next_ball_events(
     keyboard_input: Res<Input<KeyCode>>,
@@ -162,6 +310,9 @@ fn next_ball_events(
     mut old_balls: Query<&mut Trace>,
 ) {
     let mut next_ball = query.single_mut();
+    
+
+
     if keyboard_input.any_pressed([KeyCode::Left, KeyCode::Down]) {
         next_ball.speed -= 1.0;
     }
@@ -179,7 +330,7 @@ fn next_ball_events(
             MaterialMesh2dBundle {
                 mesh: meshes.add(shape::Circle::new(BALL_RADIUS).into()).into(),
                 material: materials.add(ColorMaterial::from(Color::RED)),
-                transform: Transform::from_xyz(0., PLANET_RADIUS + 200., 2.),
+                transform: Transform::from_xyz(60., PLANET_RADIUS + 145., 7.),
                 ..default()
             },
             Ball,
@@ -195,7 +346,6 @@ fn next_ball_events(
         ));
         next_ball.speed += 30.;
     }
-    println!("{}", next_ball.speed);
 }
 
 
@@ -211,7 +361,6 @@ fn apply_gravity(
 ) {
     let planet_mass = query_planet.single();
     for (transform, mut acceleration, mass) in &mut query_ball {
-        // println!("{:?}, {:?}", transform.translation, mass);
         let mass_product = planet_mass.value * mass.value;
         let mut distance = get_distance(&transform.translation, Vec3::new(0.,0., 1.));
         if distance < 1. {
@@ -245,18 +394,16 @@ fn apply_acceleration(mut query: Query<(&mut Velocity, &Acceleration)>) {
 }
 
 fn apply_velocity(
-    mut query: Query<(&mut Transform, &Velocity, &Radius, &mut Trace)>,
-
-
+    mut query: Query<(&mut Transform, &mut Velocity, &Radius, &mut Trace)>,
 ) {
-    for (mut transform, velocity, radius, mut trace) in &mut query {
+    for (mut transform, mut velocity, radius, mut trace) in &mut query {
         
         
         if trace.last {
             trace.counter += 1;
             if trace.counter % 10 == 0 {
                 trace.balls.push_back(Vec2::new(transform.translation.x, transform.translation.y));
-            } 
+            }
         }
        
 
@@ -269,8 +416,9 @@ fn apply_velocity(
         if distance < PLANET_RADIUS + radius.value {
             transform.translation.x -= velocity.x * TIME_STEP;
             transform.translation.y -= velocity.y * TIME_STEP;
+            velocity.x = 0.;
+            velocity.y = 0.;
         }
-
         // colisao inelastica
 
     }
@@ -295,7 +443,7 @@ fn spawn_trace(
             for trace_element in trace.balls.iter() {
                 commands.spawn((
                     MaterialMesh2dBundle {
-                        mesh: meshes.add(shape::Circle::new(5.).into()).into(),
+                        mesh: meshes.add(shape::Circle::new(4.).into()).into(),
                         material: materials.add(ColorMaterial::from(Color::GREEN)),
                         transform: Transform::from_xyz(trace_element.x, trace_element.y, 1.),
                         ..default()
