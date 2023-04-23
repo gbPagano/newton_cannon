@@ -5,7 +5,8 @@ use bevy_pancam::{PanCam, PanCamPlugin};
 
 const BACKGROUND_COLOR: Color = Color::BLACK;
 const TIME_STEP: f32 = 1. / 60.;
-const GRAVITATIONAL_CONSTANT: f32 = 0.35; 
+const GRAVITATIONAL_CONSTANT: f32 = 0.35;
+const RESTITUTION_CONSTANT: f32 = 0.8;
 const PLANET_RADIUS: f32 = 756.8 / 2.;
 const PLANET_MASS: u64 = 1_000_000;
 const BALL_RADIUS: f32 = 7.5;
@@ -410,14 +411,64 @@ fn apply_velocity(
         transform.translation.x += velocity.x * TIME_STEP;
         transform.translation.y += velocity.y * TIME_STEP;
 
-        // verificar colisao
+        // verify collison
         
         let distance = get_distance(&transform.translation, Vec3::new(0.,0., 1.));
         if distance < PLANET_RADIUS + radius.value {
             transform.translation.x -= velocity.x * TIME_STEP;
             transform.translation.y -= velocity.y * TIME_STEP;
-            velocity.x = 0.;
-            velocity.y = 0.;
+            
+            // apply colission
+            velocity.x *= RESTITUTION_CONSTANT;
+            velocity.y *= RESTITUTION_CONSTANT;
+
+            let m1 = PLANET_MASS as f32;
+            let m2 = BALL_MASS as f32;
+
+            let u1x: f32 = 0.;  // planet velocity
+            let u1y: f32 = 0.;  // planet velocity
+            let u2x = velocity.x;
+            let u2y = velocity.y;
+
+            let x1 = 0.;  // planet position
+            let y1 = 0.;  // planet position
+            let x2 = transform.translation.x;
+            let y2 = transform.translation.y;
+
+            let u1 = ((u1x * u1x + u1y * u1y) as f32).sqrt();
+            let u2 = ((u2x * u2x + u2y * u2y) as f32).sqrt();
+
+            let a1 = (y2 - y1).atan2(x2-x1);
+            let b1 = u1y.atan2(u1x);
+            let c1 = b1 - a1;
+
+            let a2 = (y1 - y2).atan2(x1-x2);
+            let b2 = u2y.atan2(u2x);
+            let c2 = b2 - a2;
+
+            let u12 = u1 * c1.cos();
+            let u11 = u1 * c1.sin();
+
+            let u21 = u2 * c2.cos();
+            let u22 = u2 * c2.sin();
+
+            let v12 = (((m1-m2)*u12) - (2.*m2*u21))/(m1+m2);
+            let v21 = (((m1-m2)*u21) + (2.*m1*u12))/(m1+m2);
+
+            let v1x = u11 * -a1.sin() + v12 * a1.cos();
+            let v1y = u11 * a1.cos() + v12 * a1.sin();
+
+            let v2x = u22 * -a2.sin() - v21 * a2.cos();
+            let v2y = u22 * a2.cos() - v21 * a2.sin();
+
+            // assert planet is not moving
+            assert_eq!((v1x  * 1000.0).round() / 1000.0, 0.);
+            assert_eq!((v1y * 1000.0).round() / 1000.0, 0.);
+
+            // update ball velocity
+            velocity.x = v2x;
+            velocity.y = v2y;        
+
         }
         // colisao inelastica
 
