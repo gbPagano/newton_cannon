@@ -2,11 +2,12 @@ use ::bounded_vec_deque::BoundedVecDeque;
 use bevy::{prelude::*, render::camera::ScalingMode, sprite::MaterialMesh2dBundle};
 use bevy_editor_pls::prelude::*;
 use bevy_pancam::{PanCam, PanCamPlugin};
+use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 
 const BACKGROUND_COLOR: Color = Color::BLACK;
 const TIME_STEP: f32 = 1. / 60.;
 const GRAVITATIONAL_CONSTANT: f32 = 0.35;
-const RESTITUTION_CONSTANT: f32 = 0.8;
+const RESTITUTION_CONSTANT: f32 = 0.7;
 const PLANET_RADIUS: f32 = 756.8 / 2.;
 const PLANET_MASS: u64 = 1_000_000;
 const BALL_RADIUS: f32 = 7.5;
@@ -20,13 +21,13 @@ fn main() {
         .insert_resource(ClearColor(BACKGROUND_COLOR))
         .insert_resource(FixedTime::new_from_secs(TIME_STEP))
         // .add_plugin(EditorPlugin)
-        // .add_plugin(bevy::diagnostic::FrameTimeDiagnosticsPlugin)
-        // .add_plugin(bevy::diagnostic::EntityCountDiagnosticsPlugin)
+        .add_plugin(LogDiagnosticsPlugin::default())
+        .add_plugin(FrameTimeDiagnosticsPlugin::default())
         .add_plugin(PanCamPlugin::default())
         .add_startup_system(setup)
+        .add_system(next_ball_events)
         .add_systems(
             (
-                next_ball_events.before(apply_gravity),
                 apply_gravity,
                 apply_acceleration.after(apply_gravity),
                 apply_velocity.after(apply_acceleration),
@@ -34,7 +35,7 @@ fn main() {
                 clean_trace.after(apply_velocity),
                 spawn_trace.after(clean_trace),
             )
-                // .in_schedule(CoreSchedule::FixedUpdate),
+                .in_schedule(CoreSchedule::FixedUpdate),
         )
         .run();
 }
@@ -377,7 +378,7 @@ fn apply_gravity(
         let force_x = gravitational_force * cos;
         let force_y = gravitational_force * sen;
 
-        println!("{} {}", force_x, force_y);
+        // println!("{} {}", force_x, force_y);
 
         acceleration.x = force_x / mass.value as f32;
         acceleration.y = force_y / mass.value as f32;
@@ -388,7 +389,7 @@ fn apply_gravity(
 
 fn apply_acceleration(mut query: Query<(&mut Velocity, &Acceleration)>) {
     for (mut velocity, acceleration) in &mut query {
-        println!("{:?}", acceleration);
+        // println!("{:?}", acceleration);
         velocity.x += acceleration.x;
         velocity.y += acceleration.y;
     }
