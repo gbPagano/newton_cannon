@@ -1,8 +1,12 @@
 use ::bounded_vec_deque::BoundedVecDeque;
-use bevy::{prelude::*, render::camera::ScalingMode, sprite::MaterialMesh2dBundle};
-use bevy_editor_pls::prelude::*;
+use bevy::{
+    prelude::*,
+    render::camera::ScalingMode,
+    sprite::MaterialMesh2dBundle
+};
 use bevy_pancam::{PanCam, PanCamPlugin};
 use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
+
 
 const BACKGROUND_COLOR: Color = Color::BLACK;
 const TIME_STEP: f32 = 1. / 60.;
@@ -16,13 +20,19 @@ const BALL_RADIUS: f32 = 7.5;
 const BALL_MASS: u64 = 1;
 
 
-
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
+        // .add_plugins(DefaultPlugins)
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            primary_window: Some(Window {
+                title: "Newton Cannon".into(),
+                // resolution: (1920., 980.).into(),
+                ..default()
+            }),
+            ..default()
+        }))
         .insert_resource(ClearColor(BACKGROUND_COLOR))
         .insert_resource(FixedTime::new_from_secs(TIME_STEP))
-        // .add_plugin(EditorPlugin)
         .add_plugin(LogDiagnosticsPlugin::default())
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
         .add_plugin(PanCamPlugin::default())

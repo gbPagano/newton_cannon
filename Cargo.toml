@@ -7,9 +7,6 @@ edition = "2021"
 
 [dependencies]
 bevy = {version = "0.10.0", features = ["dynamic_linking", "jpeg"]}
-bevy-inspector-egui = "0.18.1"
-bevy_editor_pls = "0.3.0"
-bevy_fly_camera = "0.10.0"
 bevy_pancam = "0.8.0"
 bounded-vec-deque = "0.1.1"
 
