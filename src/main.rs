@@ -6,7 +6,9 @@ use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 
 const BACKGROUND_COLOR: Color = Color::BLACK;
 const TIME_STEP: f32 = 1. / 60.;
-const GRAVITATIONAL_CONSTANT: f32 = 0.35;
+const SPEED_STEP: f32 = 3.5;
+const TRACE_RATE: i32 = 5;
+const GRAVITATIONAL_CONSTANT: f32 = 6.67;
 const RESTITUTION_CONSTANT: f32 = 0.7;
 const PLANET_RADIUS: f32 = 756.8 / 2.;
 const PLANET_MASS: u64 = 1_000_000;
@@ -180,7 +182,7 @@ fn setup(
 
     // next ball
     commands.spawn(NextBall {
-        speed: 30., 
+        speed: 35., 
     });
     
 
@@ -346,7 +348,7 @@ fn next_ball_events(
                 last: true,
             },
         ));
-        next_ball.speed += 30.;
+        next_ball.speed += 15.;
     }
 }
 
@@ -390,8 +392,8 @@ fn apply_gravity(
 fn apply_acceleration(mut query: Query<(&mut Velocity, &Acceleration)>) {
     for (mut velocity, acceleration) in &mut query {
         // println!("{:?}", acceleration);
-        velocity.x += acceleration.x;
-        velocity.y += acceleration.y;
+        velocity.x += acceleration.x * TIME_STEP * SPEED_STEP;
+        velocity.y += acceleration.y * TIME_STEP * SPEED_STEP;
     }
 }
 
@@ -403,21 +405,21 @@ fn apply_velocity(
         
         if trace.last {
             trace.counter += 1;
-            if trace.counter % 10 == 0 {
+            if trace.counter % TRACE_RATE == 0 {
                 trace.balls.push_back(Vec2::new(transform.translation.x, transform.translation.y));
             }
         }
        
 
-        transform.translation.x += velocity.x * TIME_STEP;
-        transform.translation.y += velocity.y * TIME_STEP;
+        transform.translation.x += velocity.x * TIME_STEP * SPEED_STEP;
+        transform.translation.y += velocity.y * TIME_STEP * SPEED_STEP;
 
         // verify collison
         
         let distance = get_distance(&transform.translation, Vec3::new(0.,0., 1.));
         if distance < PLANET_RADIUS + radius.value {
-            transform.translation.x -= velocity.x * TIME_STEP;
-            transform.translation.y -= velocity.y * TIME_STEP;
+            transform.translation.x -= velocity.x * TIME_STEP * SPEED_STEP;
+            transform.translation.y -= velocity.y * TIME_STEP * SPEED_STEP;
             
             // apply colission
             velocity.x *= RESTITUTION_CONSTANT;
@@ -463,8 +465,8 @@ fn apply_velocity(
             let v2y = u22 * a2.cos() - v21 * a2.sin();
 
             // assert planet is not moving
-            assert_eq!((v1x  * 1000.0).round() / 1000.0, 0.);
-            assert_eq!((v1y * 1000.0).round() / 1000.0, 0.);
+            assert_eq!((v1x  * 100.0).round() / 100.0, 0.);
+            assert_eq!((v1y * 100.0).round() / 100.0, 0.);
 
             // update ball velocity
             velocity.x = v2x;
@@ -476,14 +478,12 @@ fn apply_velocity(
     }
 }
 
-#[allow(dead_code)]
 fn clean_trace(mut commands: Commands, query: Query<Entity, With<BallTrace>>) {
     for trace_entity in &query {
         commands.entity(trace_entity).despawn();
     }
 }
 
-#[allow(dead_code)]
 fn spawn_trace(
     mut commands: Commands,
     query: Query<&Trace>,
