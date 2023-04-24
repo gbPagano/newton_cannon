@@ -18,7 +18,6 @@ fn main() {
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "Newton Cannon".into(),
-                // resolution: (1920., 980.).into(),
                 ..default()
             }),
             ..default()
