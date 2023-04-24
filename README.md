@@ -3,16 +3,7 @@
 Newton's cannonball was a thought experiment Isaac Newton used to hypothesize that the force of gravity was universal
 
 ---
-
-![](my_video.mov)
-
-```
-
-```
-
-<video width="320" height="240" controls>
-  <source src="docs/example.mp4" type="video/mp4">
-</video>
+https://user-images.githubusercontent.com/103840130/234119051-4e3e8d95-1c00-40a5-bf64-85e539084047.mp4
 
 ## Online
 
