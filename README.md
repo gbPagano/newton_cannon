@@ -4,6 +4,16 @@ Newton's cannonball was a thought experiment Isaac Newton used to hypothesize th
 
 ---
 
+![](my_video.mov)
+
+```
+
+```
+
+<video width="320" height="240" controls>
+  <source src="docs/example.mp4" type="video/mp4">
+</video>
+
 ## Online
 
 You can test the app online on github pages
@@ -62,5 +72,3 @@ python -m http.server -d wasm
 - Arrow Keys -> Changes the initial velocity of the next ball
 
 - Mouse -> Controls the camera
-
-
