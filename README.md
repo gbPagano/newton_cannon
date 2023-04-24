@@ -1,8 +1,24 @@
+# Newton's Cannon
+
+Newton's cannonball was a thought experiment Isaac Newton used to hypothesize that the force of gravity was universal
+
+---
+
+## Online
+
+You can test the app online on github pages
+
+- https://gbpagano.github.io/newton_cannon/
+
+## Binary
+
 To run locally just clone the project and run it with cargo:
 
 ```bash
 cargo run --release --features bevy/dynamic_linking
 ```
+
+## WebAssembly
 
 To build in wasm and run in the browser first install the dependencies:
 
@@ -38,5 +54,13 @@ Done, run a local server in the wasm directory:
 ```bash
 python -m http.server -d wasm
 ```
+
+## Usage
+
+- Spacebar | Enter ->  Create a new ball
+
+- Arrow Keys -> Changes the initial velocity of the next ball
+
+- Mouse -> Controls the camera
 
 
