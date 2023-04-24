@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bevy = {version = "0.10.0", features = ["dynamic_linking", "jpeg"]}
+bevy = {version = "0.10.0", features = ["dynamic_linking", "jpeg"]} # for wasm remove dynamic_linking
 bevy_pancam = "0.8.0"
 bounded-vec-deque = "0.1.1"
 

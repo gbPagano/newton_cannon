@@ -1,12 +1,6 @@
 use ::bounded_vec_deque::BoundedVecDeque;
-use bevy::{
-    prelude::*,
-    render::camera::ScalingMode,
-    sprite::MaterialMesh2dBundle
-};
+use bevy::{prelude::*, render::camera::ScalingMode, sprite::MaterialMesh2dBundle};
 use bevy_pancam::{PanCam, PanCamPlugin};
-use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
-
 
 const BACKGROUND_COLOR: Color = Color::BLACK;
 const TIME_STEP: f32 = 1. / 60.;
@@ -19,10 +13,8 @@ const PLANET_MASS: u64 = 1_000_000;
 const BALL_RADIUS: f32 = 7.5;
 const BALL_MASS: u64 = 1;
 
-
 fn main() {
     App::new()
-        // .add_plugins(DefaultPlugins)
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "Newton Cannon".into(),
@@ -33,8 +25,6 @@ fn main() {
         }))
         .insert_resource(ClearColor(BACKGROUND_COLOR))
         .insert_resource(FixedTime::new_from_secs(TIME_STEP))
-        .add_plugin(LogDiagnosticsPlugin::default())
-        .add_plugin(FrameTimeDiagnosticsPlugin::default())
         .add_plugin(PanCamPlugin::default())
         .add_startup_system(setup)
         .add_system(next_ball_events)
@@ -87,13 +77,10 @@ struct Trace {
 #[derive(Component)]
 struct BallTrace;
 
-
-
 #[derive(Component)]
 struct NextBall {
     speed: f32,
 }
-
 
 #[derive(Component)]
 struct NextSpeedText;
@@ -104,21 +91,12 @@ struct LastBallSpeedText;
 #[derive(Component)]
 struct LastBallAccelerationText;
 
-
-
-fn setup(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-) {
+fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     // assets
     let background_image = asset_server.load("background.jpg");
     let planet_image = asset_server.load("planet_earth.png");
     let cannon_image = asset_server.load("cannon.png");
     let tower_image = asset_server.load("tower.png");
-
-
-
-
 
     // camera
     let mut cam = Camera2dBundle::default();
@@ -127,7 +105,6 @@ fn setup(
     commands.spawn((
         cam,
         PanCam {
-            // max_scale: Some(4.),
             min_scale: 0.3,
             min_x: Some(-6016. / 2.0),
             max_x: Some(6016. / 2.0),
@@ -141,12 +118,11 @@ fn setup(
         texture: background_image,
         ..default()
     });
-    
+
     // planet
     commands.spawn((
         SpriteBundle {
             texture: planet_image,
-            // transform: Transform::from_scale(Vec3::splat(0.1)),
             transform: Transform {
                 translation: Vec3::new(0., 0., 1.),
                 scale: Vec3::splat(0.1),
@@ -156,49 +132,37 @@ fn setup(
         },
         Planet,
         Mass { value: PLANET_MASS },
-        Radius { value: PLANET_RADIUS },
+        Radius {
+            value: PLANET_RADIUS,
+        },
         Position(Vec2::new(0., 0.)),
     ));
-   
 
-
-    // cannon 
+    // tower and cannon
     commands.spawn(SpriteBundle {
-            texture: cannon_image,
-            // transform: Transform::from_scale(Vec3::splat(0.1)),
-            transform: Transform {
-                translation: Vec3::new(12., 510., 4.),
-                scale: Vec3::splat(0.1),
-                ..default()
-            },
+        texture: cannon_image,
+        transform: Transform {
+            translation: Vec3::new(12., 510., 4.),
+            scale: Vec3::splat(0.1),
             ..default()
         },
-    );
-
-     // cannon 
-    commands.spawn(SpriteBundle {
-            texture: tower_image,
-            // transform: Transform::from_scale(Vec3::splat(0.1)),
-            transform: Transform {
-                translation: Vec3::new(45., 425., 5.),
-                scale: Vec3::splat(0.8),
-                ..default()
-            },
-            ..default()
-        },
-    );
-
-
-
-    // next ball
-    commands.spawn(NextBall {
-        speed: 35., 
+        ..default()
     });
-    
+    commands.spawn(SpriteBundle {
+        texture: tower_image,
+        transform: Transform {
+            translation: Vec3::new(45., 425., 5.),
+            scale: Vec3::splat(0.8),
+            ..default()
+        },
+        ..default()
+    });
 
-    // Text with multiple sections
+    // speed first ball
+    commands.spawn(NextBall { speed: 35. });
+
+    // texts
     commands.spawn((
-        // Create a TextBundle that has a Text with a list of sections.
         TextBundle::from_sections([
             TextSection::new(
                 "INITIAL SPEED OF NEXT BALL: ",
@@ -226,9 +190,7 @@ fn setup(
         NextSpeedText,
     ));
 
-        // Text with multiple sections
     commands.spawn((
-        // Create a TextBundle that has a Text with a list of sections.
         TextBundle::from_sections([
             TextSection::new(
                 "SPEED OF LAST BALL: ",
@@ -241,10 +203,11 @@ fn setup(
             TextSection::new(
                 "(X, X)",
                 TextStyle {
-                font: asset_server.load("fonts/BebasNeue-Regular.ttf"),
-                font_size: 25.0,
-                color: Color::GOLD,
-            }),
+                    font: asset_server.load("fonts/BebasNeue-Regular.ttf"),
+                    font_size: 25.0,
+                    color: Color::GOLD,
+                },
+            ),
         ])
         .with_style(Style {
             position_type: PositionType::Absolute,
@@ -259,7 +222,6 @@ fn setup(
     ));
 
     commands.spawn((
-        // Create a TextBundle that has a Text with a list of sections.
         TextBundle::from_sections([
             TextSection::new(
                 "ACCELERATION OF LAST BALL: ",
@@ -272,10 +234,11 @@ fn setup(
             TextSection::new(
                 "(X, X)",
                 TextStyle {
-                font: asset_server.load("fonts/BebasNeue-Regular.ttf"),
-                font_size: 25.0,
-                color: Color::GOLD,
-            }),
+                    font: asset_server.load("fonts/BebasNeue-Regular.ttf"),
+                    font_size: 25.0,
+                    color: Color::GOLD,
+                },
+            ),
         ])
         .with_style(Style {
             position_type: PositionType::Absolute,
@@ -288,14 +251,19 @@ fn setup(
         }),
         LastBallAccelerationText,
     ));
-
-
 }
 
 fn update_texts(
     mut next_ball_text_query: Query<&mut Text, With<NextSpeedText>>,
     mut speed_ball_text_query: Query<&mut Text, (With<LastBallSpeedText>, Without<NextSpeedText>)>,
-    mut acc_ball_text_query: Query<&mut Text, (With<LastBallAccelerationText>, Without<LastBallSpeedText>, Without<NextSpeedText>)>,
+    mut acc_ball_text_query: Query<
+        &mut Text,
+        (
+            With<LastBallAccelerationText>,
+            Without<LastBallSpeedText>,
+            Without<NextSpeedText>,
+        ),
+    >,
     next_ball_query: Query<&mut NextBall>,
     query_actual_ball: Query<(&Acceleration, &Velocity, &Trace)>,
 ) {
@@ -309,10 +277,10 @@ fn update_texts(
     for (acceleration, velocity, trace) in &query_actual_ball {
         if trace.last {
             speed_ball_text.sections[1].value = format!("({:.2}, {:.2})", velocity.x, velocity.y);
-            acceleration_ball_text.sections[1].value = format!("({:.2}, {:.2})", acceleration.x, acceleration.y);
+            acceleration_ball_text.sections[1].value =
+                format!("({:.2}, {:.2})", acceleration.x, acceleration.y);
         }
     }
-
 }
 
 fn next_ball_events(
@@ -324,8 +292,6 @@ fn next_ball_events(
     mut old_balls: Query<&mut Trace>,
 ) {
     let mut next_ball = query.single_mut();
-    
-
 
     if keyboard_input.any_pressed([KeyCode::Left, KeyCode::Down]) {
         next_ball.speed -= 1.0;
@@ -334,7 +300,6 @@ fn next_ball_events(
         next_ball.speed += 1.0;
     }
     if keyboard_input.any_just_pressed([KeyCode::Space, KeyCode::Return]) {
-        
         for mut trace in &mut old_balls {
             trace.balls = BoundedVecDeque::new(1);
             trace.last = false;
@@ -362,12 +327,10 @@ fn next_ball_events(
     }
 }
 
-
 fn get_distance(point_a: &Vec3, point_b: Vec3) -> f32 {
     let square_distance: f32 = (point_b.x - point_a.x).powf(2.) + (point_b.y - point_a.y).powf(2.);
     square_distance.sqrt()
 }
-
 
 fn apply_gravity(
     mut query_ball: Query<(&Transform, &mut Acceleration, &Mass), With<Ball>>,
@@ -376,7 +339,7 @@ fn apply_gravity(
     let planet_mass = query_planet.single();
     for (transform, mut acceleration, mass) in &mut query_ball {
         let mass_product = planet_mass.value * mass.value;
-        let mut distance = get_distance(&transform.translation, Vec3::new(0.,0., 1.));
+        let mut distance = get_distance(&transform.translation, Vec3::new(0., 0., 1.));
         if distance < 1. {
             distance = 1.;
         }
@@ -385,52 +348,42 @@ fn apply_gravity(
 
         let cos = -transform.translation.x / distance;
         let sen = -transform.translation.y / distance;
-    
 
         let force_x = gravitational_force * cos;
         let force_y = gravitational_force * sen;
 
-        // println!("{} {}", force_x, force_y);
-
         acceleration.x = force_x / mass.value as f32;
         acceleration.y = force_y / mass.value as f32;
-
     }
 }
 
-
 fn apply_acceleration(mut query: Query<(&mut Velocity, &Acceleration)>) {
     for (mut velocity, acceleration) in &mut query {
-        // println!("{:?}", acceleration);
         velocity.x += acceleration.x * TIME_STEP * SPEED_STEP;
         velocity.y += acceleration.y * TIME_STEP * SPEED_STEP;
     }
 }
 
-fn apply_velocity(
-    mut query: Query<(&mut Transform, &mut Velocity, &Radius, &mut Trace)>,
-) {
+fn apply_velocity(mut query: Query<(&mut Transform, &mut Velocity, &Radius, &mut Trace)>) {
     for (mut transform, mut velocity, radius, mut trace) in &mut query {
-        
-        
         if trace.last {
             trace.counter += 1;
             if trace.counter % TRACE_RATE == 0 {
-                trace.balls.push_back(Vec2::new(transform.translation.x, transform.translation.y));
+                trace
+                    .balls
+                    .push_back(Vec2::new(transform.translation.x, transform.translation.y));
             }
         }
-       
 
         transform.translation.x += velocity.x * TIME_STEP * SPEED_STEP;
         transform.translation.y += velocity.y * TIME_STEP * SPEED_STEP;
 
         // verify collison
-        
-        let distance = get_distance(&transform.translation, Vec3::new(0.,0., 1.));
+        let distance = get_distance(&transform.translation, Vec3::new(0., 0., 1.));
         if distance < PLANET_RADIUS + radius.value {
             transform.translation.x -= velocity.x * TIME_STEP * SPEED_STEP;
             transform.translation.y -= velocity.y * TIME_STEP * SPEED_STEP;
-            
+
             // apply colission
             velocity.x *= RESTITUTION_CONSTANT;
             velocity.y *= RESTITUTION_CONSTANT;
@@ -438,24 +391,24 @@ fn apply_velocity(
             let m1 = PLANET_MASS as f32;
             let m2 = BALL_MASS as f32;
 
-            let u1x: f32 = 0.;  // planet velocity
-            let u1y: f32 = 0.;  // planet velocity
+            let u1x: f32 = 0.; // planet velocity
+            let u1y: f32 = 0.; // planet velocity
             let u2x = velocity.x;
             let u2y = velocity.y;
 
-            let x1 = 0.;  // planet position
-            let y1 = 0.;  // planet position
+            let x1 = 0.; // planet position
+            let y1 = 0.; // planet position
             let x2 = transform.translation.x;
             let y2 = transform.translation.y;
 
             let u1 = ((u1x * u1x + u1y * u1y) as f32).sqrt();
             let u2 = ((u2x * u2x + u2y * u2y) as f32).sqrt();
 
-            let a1 = (y2 - y1).atan2(x2-x1);
+            let a1 = (y2 - y1).atan2(x2 - x1);
             let b1 = u1y.atan2(u1x);
             let c1 = b1 - a1;
 
-            let a2 = (y1 - y2).atan2(x1-x2);
+            let a2 = (y1 - y2).atan2(x1 - x2);
             let b2 = u2y.atan2(u2x);
             let c2 = b2 - a2;
 
@@ -465,8 +418,8 @@ fn apply_velocity(
             let u21 = u2 * c2.cos();
             let u22 = u2 * c2.sin();
 
-            let v12 = (((m1-m2)*u12) - (2.*m2*u21))/(m1+m2);
-            let v21 = (((m1-m2)*u21) + (2.*m1*u12))/(m1+m2);
+            let v12 = (((m1 - m2) * u12) - (2. * m2 * u21)) / (m1 + m2);
+            let v21 = (((m1 - m2) * u21) + (2. * m1 * u12)) / (m1 + m2);
 
             let v1x = u11 * -a1.sin() + v12 * a1.cos();
             let v1y = u11 * a1.cos() + v12 * a1.sin();
@@ -475,16 +428,13 @@ fn apply_velocity(
             let v2y = u22 * a2.cos() - v21 * a2.sin();
 
             // assert planet is not moving
-            assert_eq!((v1x  * 100.0).round() / 100.0, 0.);
+            assert_eq!((v1x * 100.0).round() / 100.0, 0.);
             assert_eq!((v1y * 100.0).round() / 100.0, 0.);
 
             // update ball velocity
             velocity.x = v2x;
-            velocity.y = v2y;        
-
+            velocity.y = v2y;
         }
-        // colisao inelastica
-
     }
 }
 
@@ -514,6 +464,5 @@ fn spawn_trace(
                 ));
             }
         }
-
     }
 }
